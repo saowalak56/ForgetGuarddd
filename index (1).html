@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ForgetGuard - ระบบแจ้งเตือนการลืมสิ่งของ</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans Thai",sans-serif;background:#eef6ff;color:#263238}
+header{background:linear-gradient(135deg,#1565c0,#42a5f5);color:#fff;padding:24px 18px}
+header h1{margin:0;font-size:28px}header p{margin:6px 0 0}
+main{max-width:1000px;margin:auto;padding:20px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+button{border:0;border-radius:10px;padding:11px 16px;font-weight:bold;cursor:pointer}.tab{background:#fff;color:#1565c0}.tab.active,.primary{background:#1565c0;color:#fff}.secondary{background:#eceff1;color:#37474f}.danger{background:#ef5350;color:#fff}
+.page{display:none}.page.show{display:block}.card{background:#fff;border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 4px 18px #0001}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}label{font-weight:bold;display:block;margin-bottom:6px}
+input,select{width:100%;padding:12px;border:1px solid #ccd5db;border-radius:9px;font-size:16px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px;border:1px solid #e1e6e9;border-radius:10px;margin:8px 0}
+.ok{color:#2e7d32;font-weight:bold}.warn{color:#e65100;font-weight:bold}.alert{padding:14px;border-radius:10px;margin:10px 0}.green{background:#e8f5e9}.orange{background:#fff3e0}.blue{background:#e3f2fd}
+.small{font-size:13px;color:#607d8b}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+#reader{max-width:500px;margin:15px auto}.center{text-align:center}
+.badge{display:inline-block;background:#e3f2fd;color:#1565c0;padding:6px 10px;border-radius:20px;font-size:13px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.item{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><h1>🛡️ ForgetGuard</h1><p>ระบบเช็กลิสต์และแจ้งเตือนการลืมสิ่งของ</p></header>
+<main>
+<div class="tabs">
+<button class="tab active" onclick="page('home',this)">🏠 หน้าหลัก</button>
+<button class="tab" onclick="page('items',this)">📦 สิ่งของ</button>
+<button class="tab" onclick="page('scan',this)">📷 สแกน QR</button>
+<button class="tab" onclick="page('check',this)">✅ เช็กก่อนออก</button>
+<button class="tab" onclick="page('history',this)">📊 ประวัติ</button>
+</div>
+
+<section id="home" class="page show">
+<div class="card" id="qrNotice"></div>
+<div class="grid">
+<div class="card"><h3>สิ่งของทั้งหมด</h3><div id="n" style="font-size:32px;color:#1565c0;font-weight:bold">0</div></div>
+<div class="card"><h3>ตรวจแล้ว</h3><div id="c" style="font-size:32px;color:#2e7d32;font-weight:bold">0</div></div>
+</div>
+<div class="card"><h2>🔔 สถานะ</h2><div id="alert"></div><div id="homeList"></div></div>
+</section>
+
+<section id="items" class="page">
+<div class="card"><h2>➕ เพิ่มสิ่งของ</h2>
+<form id="form" class="grid">
+<div><label>รหัสสิ่งของ</label><input id="code" placeholder="เช่น FG006" pattern="FG[0-9]{3}" required></div>
+<div><label>ชื่อสิ่งของ</label><input id="name" placeholder="เช่น บัตรพนักงาน" required></div>
+<div><label>หมวดหมู่</label><select id="cat"><option>ของใช้ส่วนตัว</option><option>อุปกรณ์ทำงาน</option><option>เอกสาร</option><option>อิเล็กทรอนิกส์</option><option>อื่น ๆ</option></select></div>
+<div><label>รายละเอียด</label><input id="note" placeholder="เช่น ต้องนำไปทุกวัน"></div>
+<div class="full"><button class="primary">บันทึกสิ่งของ</button></div>
+</form></div>
+<div class="card"><h2>📦 รายการสิ่งของ</h2><div id="list"></div></div>
+</section>
+
+<section id="scan" class="page">
+<div class="card center"><h2>📷 สแกน QR Code</h2>
+<p class="small">อนุญาตให้เว็บไซต์ใช้กล้อง แล้วสแกน QR ที่ติดอยู่กับสิ่งของ</p>
+<button class="primary" onclick="startScanner()">เปิดกล้องสแกน QR</button>
+<div id="reader"></div><div id="scanResult"></div>
+</div></section>
+
+<section id="check" class="page">
+<div class="card"><h2>✅ เช็กของก่อนออก</h2>
+<p class="small">รายการจะเปลี่ยนเป็น “นำไปแล้ว” เมื่อเปิดลิงก์จาก QR ของสิ่งของ หรือกดปุ่มด้านล่าง</p>
+<div id="checkList"></div>
+<button class="secondary" onclick="resetCheck()">รีเซ็ตการตรวจ</button>
+<button class="primary" onclick="finish()">ตรวจสอบความครบ</button>
+<div id="result"></div>
+</div></section>
+
+<section id="history" class="page">
+<div class="card"><h2>📊 ประวัติการตรวจ</h2>
+<table><thead><tr><th>วันเวลา</th><th>ผล</th><th>ตรวจแล้ว</th><th>ยังไม่ตรวจ</th></tr></thead>
+<tbody id="hist"></tbody></table></div>
+</section>
+</main>
+
+<script src="https://unpkg.com/html5-qrcode" defer></script>
+<script>
+const DEFAULT_ITEMS=[
+{id:"FG001",name:"บัตรพนักงาน",cat:"เอกสาร",note:""},
+{id:"FG002",name:"โน้ตบุ๊ก",cat:"อุปกรณ์ทำงาน",note:""},
+{id:"FG003",name:"กุญแจบ้าน",cat:"ของใช้ส่วนตัว",note:""},
+{id:"FG004",name:"โทรศัพท์มือถือ",cat:"อิเล็กทรอนิกส์",note:""},
+{id:"FG005",name:"กระเป๋าสตางค์",cat:"ของใช้ส่วนตัว",note:""}
+];
+let items=JSON.parse(localStorage.getItem("fgItems")||"null")||DEFAULT_ITEMS;
+let history=JSON.parse(localStorage.getItem("fgHist")||"[]");
+let checked=new Set(JSON.parse(localStorage.getItem("fgChecked")||"[]"));
+
+function save(){localStorage.setItem("fgItems",JSON.stringify(items));localStorage.setItem("fgHist",JSON.stringify(history));localStorage.setItem("fgChecked",JSON.stringify([...checked]))}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function page(id,b){document.querySelectorAll(".page").forEach(x=>x.classList.remove("show"));document.getElementById(id).classList.add("show");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
+
+document.getElementById("form").onsubmit=e=>{
+ e.preventDefault();
+ const id=document.getElementById("code").value.trim().toUpperCase();
+ if(items.some(x=>x.id===id)){alert("รหัสนี้มีอยู่แล้ว");return}
+ items.push({id,name:document.getElementById("name").value.trim(),cat:document.getElementById("cat").value,note:document.getElementById("note").value.trim()});
+ save();e.target.reset();render();alert("เพิ่มสิ่งของแล้ว");
+};
+
+function markItem(id,source="QR"){
+ const item=items.find(x=>x.id===id);
+ if(!item){return false}
+ checked.add(id);save();render();
+ document.getElementById("scanResult").innerHTML='<div class="alert green">✅ พบสิ่งของ: <b>'+esc(item.name)+'</b><br>รหัส '+esc(item.id)+'<br>สถานะ: นำไปแล้ว</div>';
+ return true;
+}
+
+function processQRParam(){
+ const params=new URLSearchParams(location.search), id=params.get("item");
+ if(!id)return;
+ const item=items.find(x=>x.id===id);
+ document.getElementById("qrNotice").innerHTML=item?
+ '<div class="alert green">📷 QR Code ตรวจพบ <span class="badge">'+esc(item.id)+'</span><br><b>'+esc(item.name)+'</b> ถูกบันทึกว่า <b>✅ นำไปแล้ว</b></div>':
+ '<div class="alert orange">⚠️ ไม่พบรหัสสิ่งของ <b>'+esc(id)+'</b> ในรายการ</div>';
+ if(item){checked.add(id);save()}
+ history.unshift({t:new Date().toLocaleString("th-TH"),ok:true,c:checked.size,m:items.length-checked.size});
+ history=history.slice(0,30);save();
+ if(history.length) document.getElementById("qrNotice").innerHTML+= '<div class="small">ระบบบันทึกการสแกนครั้งนี้ในประวัติแล้ว</div>';
+ history.splice(0,1);save();
+}
+
+function render(){
+ const miss=items.filter(x=>!checked.has(x.id));
+ document.getElementById("n").textContent=items.length;document.getElementById("c").textContent=checked.size;
+ document.getElementById("alert").innerHTML=items.length?(miss.length?'<div class="alert orange">⚠️ ยังไม่ได้ตรวจ: <b>'+miss.map(x=>esc(x.name)).join(", ")+'</b></div>':'<div class="alert green">✅ ตรวจครบทุกสิ่งของแล้ว</div>'):'<div class="alert orange">ยังไม่มีสิ่งของ</div>';
+ document.getElementById("homeList").innerHTML=items.map(x=>'<div class="item"><span>📦 '+esc(x.name)+' <span class="small">('+esc(x.id)+')</span></span><span class="'+(checked.has(x.id)?"ok":"warn")+'">'+(checked.has(x.id)?"✅ นำไปแล้ว":"⚠️ ยังไม่ตรวจ")+'</span></div>').join("");
+ document.getElementById("list").innerHTML=items.map(x=>'<div class="item"><div><b>'+esc(x.name)+'</b><div class="small">'+esc(x.id)+' · '+esc(x.cat)+'</div></div><button class="danger" onclick="del(\\''+x.id+'\\')">ลบ</button></div>').join("");
+ document.getElementById("checkList").innerHTML=items.map(x=>'<div class="item"><div><b>'+esc(x.name)+'</b><div class="small">'+esc(x.id)+'</div></div><button class="'+(checked.has(x.id)?"secondary":"primary")+'" onclick="toggle(\\''+x.id+'\\')">'+(checked.has(x.id)?"ยกเลิก":"นำไปแล้ว")+'</button></div>').join("");
+ document.getElementById("hist").innerHTML=history.length?history.map(x=>'<tr><td>'+esc(x.t)+'</td><td>'+(x.ok?"✅ ครบ":"⚠️ ไม่ครบ")+'</td><td>'+x.c+'</td><td>'+x.m+'</td></tr>').join(""):'<tr><td colspan="4">ยังไม่มีประวัติ</td></tr>';
+}
+function toggle(id){checked.has(id)?checked.delete(id):checked.add(id);save();render()}
+function resetCheck(){checked.clear();save();document.getElementById("result").innerHTML="";render()}
+function finish(){let miss=items.filter(x=>!checked.has(x.id));let ok=items.length>0&&!miss.length;history.unshift({t:new Date().toLocaleString("th-TH"),ok,c:checked.size,m:miss.length});history=history.slice(0,30);save();document.getElementById("result").innerHTML=ok?'<div class="alert green">🎉 ของครบแล้ว พร้อมออก</div>':'<div class="alert orange">⚠️ คุณยังไม่ได้ตรวจ: '+miss.map(x=>esc(x.name)).join(", ")+'</div>';render()}
+function del(id){if(confirm("ลบสิ่งของนี้หรือไม่?")){items=items.filter(x=>x.id!==id);checked.delete(id);save();render()}}
+
+let scanner;
+function startScanner(){
+ if(!window.Html5Qrcode){alert("กำลังโหลดระบบกล้อง กรุณารอสักครู่แล้วลองอีกครั้ง");return}
+ if(scanner){try{scanner.stop()}catch(e){}}
+ scanner=new Html5Qrcode("reader");
+ scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:250}},
+ text=>{try{const u=new URL(text);const id=u.searchParams.get("item");if(id){markItem(id,"camera");scanner.stop();}else{document.getElementById("scanResult").innerHTML='<div class="alert orange">QR นี้ไม่มีรหัสสิ่งของของ ForgetGuard</div>'}}catch(e){document.getElementById("scanResult").innerHTML='<div class="alert orange">QR นี้ไม่ใช่ลิงก์ของ ForgetGuard</div>'}},
+ err=>{}
+ ).catch(e=>{document.getElementById("scanResult").innerHTML='<div class="alert orange">ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้องและเปิดเว็บไซต์ผ่าน HTTPS</div>'});
+}
+processQRParam();render();
+</script>
+</body>
+</html>
